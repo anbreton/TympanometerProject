@@ -71,7 +71,7 @@ void set_slope_time(int voltage) {
 
 void loop() {
 
-//if (seal_check = digitalRead(sealPin)) {
+if (digitalRead(sealPin)) {
 float start_time = esp_timer_get_time();
     while (t < max_time) {
       voltage = analogRead(pinVoltage);
@@ -92,4 +92,7 @@ float start_time = esp_timer_get_time();
     set_slope_time(voltage);
 
 }
-//}
+else { 
+  ledcWrite(ledChannel,0);  
+}
+}
