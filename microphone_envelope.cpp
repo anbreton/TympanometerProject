@@ -93,5 +93,8 @@ void loop() {
   }
   }
 }
+else 
+ledcWrite(ledChannel, 0); // Send via PWM
+voltage = 0;
 }
 
