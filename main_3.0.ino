@@ -31,9 +31,14 @@ unsigned int data_count = 0; // amount of data saved to final array
 bool printed; // unfortunate ... but funny.
 
 float dataArray[6000]; // array of data to save
-constexpr int NUM_TO_AVG = 1; // number of data points to average into one
-unsigned int P_array_temp[NUM_TO_AVG] = {}; // arrays for temp storing read values which are averaged
-unsigned int Mic_array_temp[NUM_TO_AVG]  = {};
+//constexpr int NUM_TO_AVG = 1; // number of data points to average into one
+//unsigned int P_array_temp[NUM_TO_AVG] = {}; // arrays for temp storing read values which are averaged
+//unsigned int Mic_array_temp[NUM_TO_AVG]  = {};
+
+
+const unsigned int NUM_TO_AVG = 1;
+unsigned int P_array_temp[NUM_TO_AVG];
+unsigned int Mic_array_temp[NUM_TO_AVG];
 
 size_t DATA_SIZE_str = 7; // THIS DEPENDS ON WHAT TYPE WE WANT
 size_t DATA_SIZE_BASE64 = std::ceil(((DATA_SIZE_str * 8.0) / 6.0)); // might need more space
@@ -41,8 +46,8 @@ size_t DATA_SIZE_BASE64 = std::ceil(((DATA_SIZE_str * 8.0) / 6.0)); // might nee
 
 void setup() {
   // serial for debug
-  Serial.begin(9600);
-
+  //Serial.begin(9600);
+  Serial.begin(115200);
   // Set our duration based on potentiometer voltage
   potentiometer_v = analogRead(pinVoltage);
   set_time(potentiometer_v);
@@ -55,7 +60,7 @@ void setup() {
   pinMode(SEAL_DETECTOR,INPUT); // digital in
   pinMode(SEAL_ON,OUTPUT); // digital out 
 
-  analogReadResolution(8);
+  //analogReadResolution(8);
 
   //attachInterrupt(digitalPinToInterrupt(SEAL_DETECTOR),startMeasurement,RISING); //interrupt for set t=0 when seal detected
 }
@@ -98,16 +103,21 @@ unsigned int mapPWMToPressure(unsigned int in) {
    * Map [0,255] to [-400,200] 
    */
    unsigned int result = ((in - 170.0) * 600.0) / 255.0;
+   //unsigned int result = ((in - 170.0) * 600.0) / 4085.0;
    return result;
 }
 
 void loop() {
 
     if (digitalRead(SEAL_DETECTOR)) {
-      
-      currentTime = esp_timer_get_time();
+//
+      digitalWrite(SEAL_ON,HIGH);
 
-      if ((currentTime - upTime) < max_time) { // continue to read values for duration
+      upTime = esp_timer_get_time(); // set relative time
+
+      while ((currentTime - upTime) < max_time) { // continue to read values for duration
+          
+          currentTime = esp_timer_get_time();
           //Serial.print("Uptime: ");
           analogWrite(PIN_GREEN,255); // seal on  
           analogWrite(PIN_RED,0);
@@ -116,7 +126,9 @@ void loop() {
 
           // read values
           P_array_temp[cyclenum] = analogRead(PRESS_SENSOR); 
+          //Serial.println(P_array_temp[cyclenum]);
           Mic_array_temp[cyclenum] = analogRead(CURRENT_MIC_SOURCE);
+          //Serial.println(Mic_array_temp[cyclenum]);
       
           cyclenum += 1;
       
@@ -140,27 +152,26 @@ void loop() {
             
           }
 
-        }
-     else { // time has passed.
-          Serial.println("Time's up!");
-          // time's up! 
-          Serial.print("Measurement completed in ");
-          Serial.print((currentTime - upTime) / 1000000);
-          Serial.print(" seconds.\n");
+      }
       
-          Serial.println("----------------------------------------");
-      
-          // Show metadata
-          Serial.print("Number of values collected: ");
-          //Serial.flush();
-          Serial.println(data_count);
-          Serial.print("\n\n");
+      // time has passed once while loop completes
+      Serial.println("Time's up!");
+      // time's up! 
+      Serial.print("Measurement completed in ");
+      Serial.print((currentTime - upTime) / 1000000);
+      Serial.print(" seconds.\n");
+  
+      Serial.println("----------------------------------------");
+  
+      // Show metadata
+      Serial.print("Number of values collected: ");
+      //Serial.flush();
+      Serial.println(data_count);
+      Serial.print("\n\n");
 
-          transmitJSON(dataArray,data_count);
-          
-        }
+      transmitJSON(dataArray,data_count);
       
-     } // seal detected
+     } // end seal detected
 
      else {
       Serial.println("Ready to measure...");
@@ -234,7 +245,32 @@ void transmitJSON(float * dataArray, unsigned int array_length) {
   Serial.println();
   Serial.print("JSON Data\n");
   Serial.print("--------------\n");
+
   doc.printTo(Serial);
+  Serial.print("--------------\n\n");
+  
+  Serial.println("Pressure values");
+  for (int i = 0;i<data_count ; i+=2) {
+    Serial.print(dataArray[i]);
+    Serial.print(",");
+  }
+
+  Serial.println("\n Mic Values");
+  for (int i = 1;i<data_count ; i+=2) {
+    Serial.print(dataArray[i]);
+    Serial.print(",");
+  }
+  
+  /*
+  Serial.println("\n All Values");
+  for (int i = 1;i<data_count ; i++) {
+    Serial.print(dataArray[i]);
+    Serial.print(",");
+    }
+  */
+  
+  //delay(10000);
+  
 
 }
 
